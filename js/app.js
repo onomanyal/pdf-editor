@@ -895,24 +895,49 @@ imageInput.addEventListener('change', (e) => {
   const reader = new FileReader();
   reader.onload = (ev) => {
     const dataUrl = ev.target.result;
-    // fromURL with no crossOrigin option so Fabric doesn't block local data URLs
-    fabric.Image.fromURL(dataUrl, (img, isError) => {
-      if (isError) {
-        alert('تعذّر تحميل الصورة — يرجى استخدام JPG أو PNG');
-        return;
+    const htmlImg = new Image();
+    htmlImg.onload = () => {
+      // ── Remove white/light background automatically ──────────
+      const offscreen = document.createElement('canvas');
+      offscreen.width  = htmlImg.naturalWidth;
+      offscreen.height = htmlImg.naturalHeight;
+      const ctx = offscreen.getContext('2d');
+      ctx.drawImage(htmlImg, 0, 0);
+      const imageData = ctx.getImageData(0, 0, offscreen.width, offscreen.height);
+      const data = imageData.data;
+      // Detect background color from top-left corner pixel
+      const bgR = data[0], bgG = data[1], bgB = data[2];
+      const isLightBg = (bgR > 200 && bgG > 200 && bgB > 200);
+      if (isLightBg) {
+        for (let i = 0; i < data.length; i += 4) {
+          const r = data[i], g = data[i+1], b = data[i+2];
+          // Make near-white pixels transparent
+          const brightness = (r + g + b) / 3;
+          if (brightness > 210 && Math.abs(r-g) < 30 && Math.abs(g-b) < 30) {
+            data[i+3] = 0; // fully transparent
+          } else if (brightness > 180 && Math.abs(r-g) < 40 && Math.abs(g-b) < 40) {
+            // Semi-transparent for edge anti-aliasing
+            data[i+3] = Math.round(((255 - brightness) / 75) * 255);
+          }
+        }
+        ctx.putImageData(imageData, 0, 0);
       }
-      const el   = img.getElement();
-      const natW = (el && el.naturalWidth)  || img.width  || 200;
-      const natH = (el && el.naturalHeight) || img.height || 200;
-      const maxW = fabricCanvas.width  * 0.6;
-      const maxH = fabricCanvas.height * 0.6;
-      const scale = Math.min(maxW / natW, maxH / natH, 1);
-      img.set({ left: 60, top: 60, scaleX: scale, scaleY: scale });
-      fabricCanvas.add(img);
-      fabricCanvas.setActiveObject(img);
-      fabricCanvas.requestRenderAll();
-      setTool('select');
-    }); // no 3rd arg → no crossOrigin forced on the element
+      // ─────────────────────────────────────────────────────────
+
+      const processedDataUrl = offscreen.toDataURL('image/png');
+      fabric.Image.fromURL(processedDataUrl, (img) => {
+        const maxW  = fabricCanvas.width  * 0.4;
+        const maxH  = fabricCanvas.height * 0.4;
+        const scale = Math.min(maxW / htmlImg.naturalWidth, maxH / htmlImg.naturalHeight, 1);
+        img.set({ left: 60, top: 60, scaleX: scale, scaleY: scale });
+        fabricCanvas.add(img);
+        fabricCanvas.setActiveObject(img);
+        fabricCanvas.requestRenderAll();
+        setTool('select');
+      });
+    };
+    htmlImg.onerror = () => alert('تعذّر قراءة الصورة');
+    htmlImg.src = dataUrl;
   };
   reader.readAsDataURL(file);
   imageInput.value = '';
