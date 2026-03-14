@@ -37,6 +37,10 @@
      HIDDEN DESKTOP DOM — required by app.js (same IDs)
      These elements are invisible; the mobile UI uses its own elements.
      ════════════════════════════════════════════════════════════ -->
+<!-- File inputs MUST be outside visibility:hidden for mobile .click() to work -->
+<input type="file" id="file-input"  accept="application/pdf" style="opacity:0;position:fixed;top:-200px;width:1px;height:1px" />
+<input type="file" id="image-input" accept="image/*" style="opacity:0;position:fixed;top:-200px;width:1px;height:1px" />
+
 <div id="layout" style="display:none;position:absolute;pointer-events:none;visibility:hidden">
 
   <!-- menus / status required by app.js -->
@@ -44,8 +48,6 @@
     <button id="btn-open"></button>
     <button id="btn-save"></button>
     <button id="btn-export"></button>
-    <input type="file" id="file-input"  accept="application/pdf" />
-    <input type="file" id="image-input" accept="image/*" />
   </div>
   <div id="statusbar">
     <span id="status-tool"></span>

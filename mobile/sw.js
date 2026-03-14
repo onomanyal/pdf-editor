@@ -16,7 +16,12 @@ const ASSETS = [
 
 self.addEventListener('install', e => {
   e.waitUntil(
-    caches.open(CACHE).then(c => c.addAll(ASSETS)).then(() => self.skipWaiting())
+    caches.open(CACHE).then(c =>
+      // Use allSettled so one failing CDN doesn't break the whole install
+      Promise.allSettled(ASSETS.map(url =>
+        c.add(url).catch(err => console.warn('[SW] cache skip:', url, err))
+      ))
+    ).then(() => self.skipWaiting())
   );
 });
 
