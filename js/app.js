@@ -1269,7 +1269,7 @@ async function exportToPdf() {
   try {
     savePageAnnotations(State.currentPage);
 
-    // ── Use a FRESH copy for export — never modify the working State.pdfLibDoc ──
+    // Fresh copy for export — never modify the working State.pdfLibDoc
     const exportDoc = await PDFLib.PDFDocument.load(
       new Uint8Array(State.pdfBytes),
       { ignoreEncryption: true }
@@ -1283,26 +1283,22 @@ async function exportToPdf() {
       const exportObjects = (annotations.objects || []).filter(obj => !obj.isFormField);
       if (!exportObjects.length) continue;
 
-      // Get native PDF page dimensions at scale=1
       const pdfPage    = await State.pdfDoc.getPage(i);
       const nativePort = pdfPage.getViewport({ scale: 1.0 });
       const nW = nativePort.width;
       const nH = nativePort.height;
 
-      // Render at screen scale (same as what user sees) — no coordinate transform needed
       const screenW = Math.round(nW * State.scale);
       const screenH = Math.round(nH * State.scale);
 
       const exportData = Object.assign({}, annotations, { objects: exportObjects });
 
-      // Fresh canvas per page
-      const tmpCanvas = document.createElement('canvas');
-      tmpCanvas.width  = screenW;
-      tmpCanvas.height = screenH;
-      tmpCanvas.style.display = 'none';
-      document.body.appendChild(tmpCanvas);
-
-      const tmpFc = new fabric.Canvas(tmpCanvas, {
+      // ── Use an off-DOM canvas — NEVER call dispose() on shared Fabric instances ──
+      const tmpEl = document.createElement('canvas');
+      tmpEl.width  = screenW;
+      tmpEl.height = screenH;
+      // Keep off-DOM so Fabric doesn't interfere with the visible canvas
+      const tmpFc = new fabric.StaticCanvas(tmpEl, {
         backgroundColor: null, width: screenW, height: screenH,
       });
 
@@ -1310,15 +1306,15 @@ async function exportToPdf() {
         tmpFc.loadFromJSON(exportData, () => { tmpFc.renderAll(); resolve(); });
       });
 
-      // multiplier:1 — canvas is already at screen resolution
-      const annotDataUrl = tmpFc.toDataURL({ format: 'png', multiplier: 1 });
-      tmpFc.dispose();
+      const annotDataUrl = tmpEl.toDataURL('image/png');
+
+      // Clean up without dispose() — just nullify reference
+      tmpFc.clear();
 
       const imgBytes = dataUrlToBytes(annotDataUrl);
       const pngImage = await exportDoc.embedPng(imgBytes);
       const libPage  = pages[i - 1];
       const { width, height } = libPage.getSize();
-      // Draw annotation layer stretched to full native page size
       libPage.drawImage(pngImage, { x: 0, y: 0, width, height });
     }
 
@@ -1327,8 +1323,12 @@ async function exportToPdf() {
     const link = document.createElement('a');
     link.href     = URL.createObjectURL(blob);
     link.download = 'annotated-document.pdf';
+    document.body.appendChild(link);
     link.click();
+    document.body.removeChild(link);
 
+    // Re-render current page to ensure canvas is intact after export
+    fabricCanvas.requestRenderAll();
     statusInfo.textContent = 'تم تصدير الملف بنجاح ✓';
   } catch (err) {
     console.error(err);
