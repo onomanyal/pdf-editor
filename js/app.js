@@ -893,17 +893,28 @@ imageInput.addEventListener('change', (e) => {
   if (!file || !fabricCanvas) return;
   const reader = new FileReader();
   reader.onload = (ev) => {
-    fabric.Image.fromURL(ev.target.result, (img) => {
-      img.scaleToWidth(Math.min(200, fabricCanvas.width / 3));
-      img.set({ left: 60, top: 60 });
-      fabricCanvas.add(img);
-      fabricCanvas.setActiveObject(img);
-      fabricCanvas.renderAll();
-    });
+    const dataUrl = ev.target.result;
+    // Create an HTMLImageElement first to ensure the image is decoded
+    const htmlImg = new Image();
+    htmlImg.onload = () => {
+      const fabricImg = new fabric.Image(htmlImg, {
+        left: 60,
+        top: 60,
+        crossOrigin: null,
+      });
+      const maxW = fabricCanvas.width  * 0.6;
+      const maxH = fabricCanvas.height * 0.6;
+      const scale = Math.min(maxW / htmlImg.width, maxH / htmlImg.height, 1);
+      fabricImg.scale(scale);
+      fabricCanvas.add(fabricImg);
+      fabricCanvas.setActiveObject(fabricImg);
+      fabricCanvas.requestRenderAll();
+      setTool('select');
+    };
+    htmlImg.src = dataUrl;
   };
   reader.readAsDataURL(file);
   imageInput.value = '';
-  setTool('select');
 });
 
 // ──────────────────────────────────────────────────────────────
