@@ -894,20 +894,21 @@ imageInput.addEventListener('change', (e) => {
   const reader = new FileReader();
   reader.onload = (ev) => {
     const dataUrl = ev.target.result;
-    fabric.Image.fromURL(dataUrl, (img) => {
-      if (!img || img.width === 0) {
-        alert('تعذّر تحميل الصورة');
-        return;
-      }
+    const htmlImg = new Image();
+    htmlImg.onload = () => {
+      // Fabric.js 5: pass the already-loaded HTMLImageElement directly
+      const img = new fabric.Image(htmlImg);
       const maxW = fabricCanvas.width  * 0.6;
       const maxH = fabricCanvas.height * 0.6;
-      const scale = Math.min(maxW / img.width, maxH / img.height, 1);
+      const scale = Math.min(maxW / htmlImg.naturalWidth, maxH / htmlImg.naturalHeight, 1);
       img.set({ left: 60, top: 60, scaleX: scale, scaleY: scale });
       fabricCanvas.add(img);
       fabricCanvas.setActiveObject(img);
       fabricCanvas.requestRenderAll();
       setTool('select');
-    }, { crossOrigin: null });
+    };
+    htmlImg.onerror = () => alert('تعذّر قراءة الصورة');
+    htmlImg.src = dataUrl;
   };
   reader.readAsDataURL(file);
   imageInput.value = '';
