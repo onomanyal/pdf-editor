@@ -1269,73 +1269,67 @@ async function exportToPdf() {
   try {
     savePageAnnotations(State.currentPage);
 
-    const pages = State.pdfLibDoc.getPages();
+    // ── Use a FRESH copy for export — never modify the working State.pdfLibDoc ──
+    const exportDoc = await PDFLib.PDFDocument.load(
+      new Uint8Array(State.pdfBytes),
+      { ignoreEncryption: true }
+    );
+    const pages = exportDoc.getPages();
 
     for (let i = 1; i <= State.totalPages; i++) {
       const annotations = State.pageAnnotations[i];
       if (!annotations || !annotations.objects || annotations.objects.length === 0) continue;
 
+      const exportObjects = (annotations.objects || []).filter(obj => !obj.isFormField);
+      if (!exportObjects.length) continue;
+
+      // Get native PDF page dimensions at scale=1
       const pdfPage    = await State.pdfDoc.getPage(i);
       const nativePort = pdfPage.getViewport({ scale: 1.0 });
       const nW = nativePort.width;
       const nH = nativePort.height;
 
-      const EXPORT_DPI = 3;
-      const ratio = 1.0 / State.scale;
+      // Render at screen scale (same as what user sees) — no coordinate transform needed
+      const screenW = Math.round(nW * State.scale);
+      const screenH = Math.round(nH * State.scale);
 
-      const scaledObjects = (annotations.objects || [])
-        .filter(obj => !obj.isFormField)
-        .map(obj => {
-          const o = Object.assign({}, obj);
-          ['left','top','width','height','radius','rx','ry',
-           'x1','y1','x2','y2','strokeWidth','fontSize'].forEach(k => {
-            if (typeof o[k] === 'number') o[k] = o[k] * ratio;
-          });
-          if (Array.isArray(o.path)) {
-            o.path = o.path.map(seg => seg.map((v, idx) => (idx === 0 ? v : v * ratio)));
-          }
-          return o;
-        });
+      const exportData = Object.assign({}, annotations, { objects: exportObjects });
 
-      if (!scaledObjects.length) continue;
-
-      const scaledData = Object.assign({}, annotations, { objects: scaledObjects });
-
-      // Create a fresh canvas element every iteration — never reuse after dispose()
+      // Fresh canvas per page
       const tmpCanvas = document.createElement('canvas');
-      tmpCanvas.width  = nW;
-      tmpCanvas.height = nH;
+      tmpCanvas.width  = screenW;
+      tmpCanvas.height = screenH;
       tmpCanvas.style.display = 'none';
       document.body.appendChild(tmpCanvas);
 
       const tmpFc = new fabric.Canvas(tmpCanvas, {
-        backgroundColor: null, width: nW, height: nH,
+        backgroundColor: null, width: screenW, height: screenH,
       });
 
       await new Promise(resolve => {
-        tmpFc.loadFromJSON(scaledData, () => { tmpFc.renderAll(); resolve(); });
+        tmpFc.loadFromJSON(exportData, () => { tmpFc.renderAll(); resolve(); });
       });
 
-      const annotDataUrl = tmpFc.toDataURL({ format: 'png', multiplier: EXPORT_DPI });
-
-      // dispose() removes the canvas from DOM — that's fine, we created a fresh one each time
+      // multiplier:1 — canvas is already at screen resolution
+      const annotDataUrl = tmpFc.toDataURL({ format: 'png', multiplier: 1 });
       tmpFc.dispose();
 
       const imgBytes = dataUrlToBytes(annotDataUrl);
-      const pngImage = await State.pdfLibDoc.embedPng(imgBytes);
+      const pngImage = await exportDoc.embedPng(imgBytes);
       const libPage  = pages[i - 1];
       const { width, height } = libPage.getSize();
+      // Draw annotation layer stretched to full native page size
       libPage.drawImage(pngImage, { x: 0, y: 0, width, height });
     }
 
-    const pdfBytes = await State.pdfLibDoc.save();
-    const blob     = new Blob([pdfBytes], { type: 'application/pdf' });
-    const link     = document.createElement('a');
-    link.href      = URL.createObjectURL(blob);
-    link.download  = 'annotated-document.pdf';
+    const pdfBytes = await exportDoc.save();
+    const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+    const link = document.createElement('a');
+    link.href     = URL.createObjectURL(blob);
+    link.download = 'annotated-document.pdf';
     link.click();
 
-    statusInfo.textContent = 'تم تصدير الملف بنجاح';
+    statusInfo.textContent = 'تم تصدير الملف بنجاح ✓';
   } catch (err) {
     console.error(err);
     alert('حدث خطأ أثناء التصدير: ' + err.message);
