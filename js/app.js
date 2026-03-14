@@ -929,12 +929,15 @@ imageInput.addEventListener('change', (e) => {
 
       const processedDataUrl = offscreen.toDataURL('image/png');
       fabric.Image.fromURL(processedDataUrl, (img) => {
-        const maxW  = fabricCanvas.width  * 0.4;
-        const maxH  = fabricCanvas.height * 0.4;
-        const scale = Math.min(maxW / htmlImg.naturalWidth, maxH / htmlImg.naturalHeight, 1);
-        // Center the image on the canvas
-        const scaledW = htmlImg.naturalWidth  * scale;
-        const scaledH = htmlImg.naturalHeight * scale;
+        const natW = htmlImg.naturalWidth;
+        const natH = htmlImg.naturalHeight;
+        // Use natural pixel size — only scale down if larger than the canvas
+        const maxW = fabricCanvas.width  * 0.9;
+        const maxH = fabricCanvas.height * 0.9;
+        const scale = Math.min(maxW / natW, maxH / natH, 1); // 1 = never scale UP
+        // Center on canvas
+        const scaledW = natW * scale;
+        const scaledH = natH * scale;
         const centerX = (fabricCanvas.width  - scaledW) / 2;
         const centerY = (fabricCanvas.height - scaledH) / 2;
         img.set({ left: centerX, top: centerY, scaleX: scale, scaleY: scale });
