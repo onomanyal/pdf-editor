@@ -14,17 +14,17 @@ if ('serviceWorker' in navigator) {
 }
 
 // ── Helpers ───────────────────────────────────────────────────
-const $ = id => document.getElementById(id);
-const toast = (msg, dur = 3000) => {
-  const t = $('m-toast');
+// NOTE: $ is already defined by app.js — do NOT redeclare it here
+const mToast = (msg, dur = 3000) => {
+  const t = document.getElementById('m-toast');
   if (!t) return;
   t.textContent = msg;
   t.classList.add('show');
   clearTimeout(t._tid);
   t._tid = setTimeout(() => t.classList.remove('show'), dur);
 };
-const loading = show => {
-  const el = $('m-loading');
+const mLoading = show => {
+  const el = document.getElementById('m-loading');
   if (el) el.classList.toggle('show', show);
 };
 
@@ -350,7 +350,7 @@ window.addEventListener('beforeinstallprompt', e => {
 });
 window.addEventListener('appinstalled', () => {
   $('m-install-banner')?.classList.remove('show');
-  toast('✅ تم تثبيت التطبيق بنجاح!');
+  mToast('✅ تم تثبيت التطبيق بنجاح!');
 });
 
 function setupInstallBanner() {
@@ -358,7 +358,7 @@ function setupInstallBanner() {
     if (!deferredInstallPrompt) return;
     deferredInstallPrompt.prompt();
     const { outcome } = await deferredInstallPrompt.userChoice;
-    if (outcome === 'accepted') toast('جاري التثبيت…');
+    if (outcome === 'accepted') mToast('جاري التثبيت…');
     deferredInstallPrompt = null;
     $('m-install-banner')?.classList.remove('show');
   });
@@ -446,17 +446,17 @@ function hookLoadingSpinner() {
   const origLoad = window.loadPdfFile;
   if (typeof origLoad !== 'function') return;
   window.loadPdfFile = async function(file) {
-    loading(true);
+    mLoading(true);
     try {
       await origLoad.call(this, file);
     } finally {
-      loading(false);
+      mLoading(false);
     }
   };
 }
 
 // ── Make toast available globally ────────────────────────────
-window.mobileToast = toast;
+window.mobileToast = mToast;
 
 // ── Forward fields-toast to mobile toast ─────────────────────
 function forwardFieldsToast() {
@@ -464,13 +464,13 @@ function forwardFieldsToast() {
   if (!fieldToast) return;
   new MutationObserver(() => {
     if (fieldToast.classList.contains('show')) {
-      toast(fieldToast.textContent);
+      mToast(fieldToast.textContent);
     }
   }).observe(fieldToast, { attributes: true, attributeFilter: ['class'] });
 }
 
 // ── INIT ──────────────────────────────────────────────────────
-document.addEventListener('DOMContentLoaded', () => {
+function initMobile() {
 
   // Register drawers
   registerDrawer('tools',  'm-drawer-tools',  'm-overlay-tools');
@@ -509,4 +509,11 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   console.log('[PDF Pro Mobile] initialised');
-});
+}
+
+// Handle both: DOMContentLoaded not yet fired, or already fired
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initMobile);
+} else {
+  initMobile();
+}

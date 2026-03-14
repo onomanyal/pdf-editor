@@ -1,5 +1,5 @@
 /* PDF Pro Editor – Service Worker (PWA offline support) */
-const CACHE  = 'pdfpro-mobile-v1';
+const CACHE  = 'pdfpro-mobile-v6';  // bump to force cache refresh
 const ASSETS = [
   './',
   './index.html',
