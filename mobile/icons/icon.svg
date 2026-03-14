@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="80" fill="#0f1117"/>
+  <rect x="60" y="40" width="280" height="370" rx="18" fill="#1a1e2e" stroke="#e94560" stroke-width="8"/>
+  <rect x="60" y="40" width="280" height="70" rx="18" fill="#e94560"/>
+  <rect x="60" y="80" width="280" height="30" fill="#e94560"/>
+  <text x="200" y="98" font-family="Arial" font-size="52" font-weight="bold" fill="white" text-anchor="middle">PDF</text>
+  <rect x="90" y="140" width="220" height="16" rx="6" fill="#2d3250"/>
+  <rect x="90" y="170" width="180" height="16" rx="6" fill="#2d3250"/>
+  <rect x="90" y="200" width="200" height="16" rx="6" fill="#2d3250"/>
+  <rect x="90" y="240" width="220" height="40" rx="6" fill="none" stroke="#3b82f6" stroke-width="3" stroke-dasharray="8,4"/>
+  <rect x="90" y="295" width="220" height="16" rx="6" fill="#2d3250"/>
+  <rect x="90" y="320" width="160" height="16" rx="6" fill="#2d3250"/>
+  <circle cx="380" cy="380" r="100" fill="#e94560"/>
+  <text x="380" y="400" font-family="Arial" font-size="80" font-weight="bold" fill="white" text-anchor="middle">✎</text>
+</svg>

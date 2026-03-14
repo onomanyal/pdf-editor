@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="ar" dir="ltr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PDF Pro Editor</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+</head>
+<body>
+
+<!-- ===== TOP MENU BAR ===== -->
+<div id="menubar">
+  <div class="menu-brand">
+    <img src="css/icon.svg" alt="Logo" class="brand-logo" onerror="this.style.display='none'" />
+    <span class="brand-name">PDF Pro</span>
+  </div>
+  <div class="menu-actions">
+    <button id="btn-open"   class="menu-btn" title="فتح ملف PDF"><i class="fa fa-folder-open"></i> فتح</button>
+    <button id="btn-save"   class="menu-btn accent" title="حفظ التعديلات"><i class="fa fa-save"></i> حفظ</button>
+    <button id="btn-export" class="menu-btn" title="تصدير PDF"><i class="fa fa-file-export"></i> تصدير</button>
+    <a href="mobile/index.html" class="menu-btn" title="نسخة الهاتف (Android PWA)" style="text-decoration:none;display:flex;align-items:center;gap:6px">
+      <i class="fa fa-mobile-alt"></i> <span>الهاتف</span>
+    </a>
+    <input type="file" id="file-input" accept="application/pdf" style="display:none" />
+  </div>
+</div>
+
+<!-- ===== MAIN LAYOUT ===== -->
+<div id="layout">
+
+  <!-- LEFT SIDEBAR: TOOLS -->
+  <aside id="toolbar">
+
+    <div class="tool-group-label">عرض</div>
+    <button class="tool-btn" id="tool-select"    data-tool="select"    title="تحديد (V)"><i class="fa fa-mouse-pointer"></i><span>تحديد</span></button>
+    <button class="tool-btn" id="tool-hand"      data-tool="hand"      title="تمرير (H)"><i class="fa fa-hand-paper"></i><span>تمرير</span></button>
+
+    <div class="tool-divider"></div>
+    <div class="tool-group-label">نصوص</div>
+    <button class="tool-btn" id="tool-text"      data-tool="text"      title="إضافة نص (T)"><i class="fa fa-font"></i><span>نص</span></button>
+    <button class="tool-btn" id="tool-highlight" data-tool="highlight" title="تمييز (H)"><i class="fa fa-highlighter"></i><span>تظليل</span></button>
+    <button class="tool-btn" id="tool-underline" data-tool="underline" title="تسطير"><i class="fa fa-underline"></i><span>تسطير</span></button>
+    <button class="tool-btn" id="tool-strikeout" data-tool="strikeout" title="شطب"><i class="fa fa-strikethrough"></i><span>شطب</span></button>
+
+    <div class="tool-divider"></div>
+    <div class="tool-group-label">رسم</div>
+    <button class="tool-btn" id="tool-pen"       data-tool="pen"       title="قلم حر (P)"><i class="fa fa-pen-nib"></i><span>قلم</span></button>
+    <button class="tool-btn" id="tool-eraser"    data-tool="eraser"    title="ممحاة (E)"><i class="fa fa-eraser"></i><span>ممحاة</span></button>
+
+    <div class="tool-divider"></div>
+    <div class="tool-group-label">أشكال</div>
+    <button class="tool-btn" id="tool-rect"      data-tool="rect"      title="مستطيل (R)"><i class="fa fa-square"></i><span>مستطيل</span></button>
+    <button class="tool-btn" id="tool-circle"    data-tool="circle"    title="دائرة (C)"><i class="fa fa-circle"></i><span>دائرة</span></button>
+    <button class="tool-btn" id="tool-arrow"     data-tool="arrow"     title="سهم (A)"><i class="fa fa-long-arrow-alt-right"></i><span>سهم</span></button>
+    <button class="tool-btn" id="tool-line"      data-tool="line"      title="خط (L)"><i class="fa fa-minus"></i><span>خط</span></button>
+
+    <div class="tool-divider"></div>
+    <div class="tool-group-label">إدراج</div>
+    <button class="tool-btn" id="tool-image"     data-tool="image"     title="إدراج صورة"><i class="fa fa-image"></i><span>صورة</span></button>
+    <button class="tool-btn" id="tool-stamp"     data-tool="stamp"     title="ختم / طابع"><i class="fa fa-stamp"></i><span>ختم</span></button>
+    <input type="file" id="image-input" accept="image/*" style="display:none" />
+
+    <div class="tool-divider"></div>
+    <div class="tool-group-label">تعديل</div>
+    <button class="tool-btn" id="btn-undo"       title="تراجع (Ctrl+Z)"><i class="fa fa-undo"></i><span>تراجع</span></button>
+    <button class="tool-btn" id="btn-redo"       title="إعادة (Ctrl+Y)"><i class="fa fa-redo"></i><span>إعادة</span></button>
+    <button class="tool-btn danger" id="btn-delete" title="حذف المحدد (Del)"><i class="fa fa-trash"></i><span>حذف</span></button>
+
+    <div class="tool-divider"></div>
+    <div class="tool-group-label">لغة</div>
+    <button class="tool-btn" id="btn-spellcheck" title="تدقيق لغوي (F7)"><i class="fa fa-spell-check"></i><span>تدقيق</span></button>
+
+    <div class="tool-divider"></div>
+    <div class="tool-group-label">نماذج</div>
+    <button class="tool-btn" id="btn-detect-fields" title="كشف حقول النموذج تلقائياً"><i class="fa fa-table-cells"></i><span>كشف حقول</span></button>
+    <button class="tool-btn" id="btn-clear-fields"  title="مسح الحقول المكتشفة"><i class="fa fa-broom"></i><span>مسح الحقول</span></button>
+
+  </aside>
+
+  <!-- CENTER: PDF VIEWER -->
+  <main id="viewer-area">
+
+    <!-- TOOLBAR: ZOOM & PAGES -->
+    <div id="viewer-controls">
+      <div class="ctrl-group">
+        <button id="btn-zoom-out"  class="ctrl-btn" title="تصغير"><i class="fa fa-search-minus"></i></button>
+        <span id="zoom-label">100%</span>
+        <button id="btn-zoom-in"   class="ctrl-btn" title="تكبير"><i class="fa fa-search-plus"></i></button>
+        <button id="btn-zoom-fit"  class="ctrl-btn" title="ملاءمة"><i class="fa fa-expand"></i></button>
+      </div>
+      <div class="ctrl-group">
+        <button id="btn-prev-page" class="ctrl-btn" title="الصفحة السابقة"><i class="fa fa-chevron-left"></i></button>
+        <input  id="page-input" type="number" min="1" value="1" title="رقم الصفحة" />
+        <span id="page-total">/ 0</span>
+        <button id="btn-next-page" class="ctrl-btn" title="الصفحة التالية"><i class="fa fa-chevron-right"></i></button>
+      </div>
+      <div class="ctrl-group">
+        <button id="btn-rotate-left"  class="ctrl-btn" title="تدوير لليسار"><i class="fa fa-rotate-left"></i></button>
+        <button id="btn-rotate-right" class="ctrl-btn" title="تدوير لليمين"><i class="fa fa-rotate-right"></i></button>
+        <button id="btn-fullscreen"   class="ctrl-btn" title="ملء الشاشة"><i class="fa fa-expand-arrows-alt"></i></button>
+      </div>
+    </div>
+
+    <!-- PDF CANVAS WRAPPER -->
+    <div id="canvas-wrapper">
+      <div id="drop-zone">
+        <div class="drop-content">
+          <i class="fa fa-file-pdf drop-icon"></i>
+          <p>اسحب ملف PDF هنا أو</p>
+          <button id="btn-browse">تصفح الملفات</button>
+        </div>
+      </div>
+      <div id="page-container">
+        <canvas id="pdf-canvas"></canvas>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- RIGHT SIDEBAR: PROPERTIES & THUMBNAILS -->
+  <aside id="right-panel">
+    <div class="panel-tabs">
+      <button class="panel-tab active" data-panel="props">خصائص</button>
+      <button class="panel-tab" data-panel="thumbs">صفحات</button>
+    </div>
+
+    <!-- PROPERTIES PANEL -->
+    <div id="panel-props" class="panel-content active">
+      <div class="prop-section">
+        <h4>الخط</h4>
+        <div class="prop-row">
+          <label>النوع</label>
+          <select id="prop-font-family">
+            <option>Arial</option>
+            <option>Times New Roman</option>
+            <option>Courier New</option>
+            <option>Verdana</option>
+            <option>Georgia</option>
+          </select>
+        </div>
+        <div class="prop-row">
+          <label>الحجم</label>
+          <input type="number" id="prop-font-size" value="16" min="6" max="200" />
+        </div>
+        <div class="prop-row">
+          <label>اللون</label>
+          <input type="color" id="prop-font-color" value="#000000" />
+        </div>
+        <div class="prop-row style-btns">
+          <button class="style-btn" id="prop-bold"      title="عريض"><i class="fa fa-bold"></i></button>
+          <button class="style-btn" id="prop-italic"    title="مائل"><i class="fa fa-italic"></i></button>
+          <button class="style-btn" id="prop-underline-btn" title="تسطير"><i class="fa fa-underline"></i></button>
+        </div>
+        <div class="prop-row">
+          <label>خلفية النص</label>
+          <input type="color" id="prop-text-bg-color" value="#ffffff" />
+          <label class="toggle-label">
+            <input type="checkbox" id="prop-text-bg-none" /> بدون
+          </label>
+        </div>
+      </div>
+
+      <div class="prop-section">
+        <h4>الرسم</h4>
+        <div class="prop-row">
+          <label>اللون</label>
+          <input type="color" id="prop-stroke-color" value="#e53e3e" />
+        </div>
+        <div class="prop-row">
+          <label>السُّمك</label>
+          <input type="range" id="prop-stroke-width" min="1" max="30" value="2" />
+          <span id="stroke-width-label">2</span>
+        </div>
+        <div class="prop-row">
+          <label>التعبئة</label>
+          <input type="color" id="prop-fill-color" value="#ffffff" />
+          <label class="toggle-label">
+            <input type="checkbox" id="prop-fill-none" checked /> بدون
+          </label>
+        </div>
+        <div class="prop-row">
+          <label>الشفافية</label>
+          <input type="range" id="prop-opacity" min="10" max="100" value="100" />
+          <span id="opacity-label">100%</span>
+        </div>
+      </div>
+
+      <div class="prop-section">
+        <h4>التظليل</h4>
+        <div class="prop-row">
+          <label>اللون</label>
+          <input type="color" id="prop-highlight-color" value="#ffff00" />
+        </div>
+        <div class="prop-row">
+          <label>الشفافية</label>
+          <input type="range" id="prop-highlight-opacity" min="10" max="100" value="50" />
+          <span id="highlight-opacity-label">50%</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- THUMBNAILS PANEL -->
+    <div id="panel-thumbs" class="panel-content">
+      <div id="thumbnails-list"></div>
+    </div>
+  </aside>
+
+</div>
+
+<!-- TEXT INPUT OVERLAY -->
+<div id="text-overlay" style="display:none;">
+  <div id="text-overlay-backdrop"></div>
+  <div id="text-box-wrapper">
+    <div class="text-box-header">
+      <span class="text-box-title"><i class="fa fa-font"></i> إضافة نص</span>
+      <div class="text-lang-group">
+        <label class="text-lang-label"><i class="fa fa-globe"></i> اللغة:</label>
+        <select id="spell-lang">
+          <option value="auto">تلقائي</option>
+          <option value="ar">العربية</option>
+          <option value="en-US">English</option>
+          <option value="fr">Français</option>
+        </select>
+        <button id="btn-check-inline" title="تدقيق النص"><i class="fa fa-spell-check"></i> تدقيق</button>
+      </div>
+    </div>
+    <div id="text-editor" contenteditable="true" spellcheck="false" dir="auto"></div>
+    <div id="spell-errors-panel" style="display:none;">
+      <div class="spell-panel-header">
+        <i class="fa fa-exclamation-triangle"></i>
+        <span id="spell-error-count">0 أخطاء</span>
+        <button id="spell-panel-close" class="spell-close-btn"><i class="fa fa-times"></i></button>
+      </div>
+      <div id="spell-errors-list"></div>
+    </div>
+    <div id="spell-checking-indicator" style="display:none;">
+      <i class="fa fa-spinner fa-spin"></i> جاري التدقيق…
+    </div>
+    <div class="text-box-actions">
+      <button id="text-confirm"><i class="fa fa-check"></i> تأكيد</button>
+      <button id="text-cancel"><i class="fa fa-times"></i> إلغاء</button>
+    </div>
+  </div>
+</div>
+
+<!-- SPELL CHECK MODAL (for canvas text objects) -->
+<div id="spellcheck-modal" style="display:none;">
+  <div class="modal-backdrop" id="spellcheck-backdrop"></div>
+  <div class="modal-box spellcheck-box">
+    <div class="spellcheck-header">
+      <h3><i class="fa fa-spell-check"></i> التدقيق اللغوي</h3>
+      <div class="spell-lang-row">
+        <label>اللغة:</label>
+        <select id="spell-modal-lang">
+          <option value="auto">تلقائي</option>
+          <option value="ar">العربية</option>
+          <option value="en-US">English</option>
+          <option value="fr">Français</option>
+        </select>
+        <button id="btn-run-spellcheck" class="menu-btn accent"><i class="fa fa-search"></i> فحص الصفحة</button>
+      </div>
+    </div>
+    <div id="spell-modal-status" class="spell-modal-status">اضغط "فحص الصفحة" لبدء التدقيق على نصوص الصفحة الحالية.</div>
+    <div id="spell-modal-results"></div>
+    <div class="spell-modal-footer">
+      <span id="spell-modal-summary"></span>
+      <button id="spellcheck-close" class="menu-btn">إغلاق</button>
+    </div>
+  </div>
+</div>
+
+<!-- STAMP PICKER MODAL -->
+<div id="stamp-modal" style="display:none;">
+  <div class="modal-backdrop"></div>
+  <div class="modal-box">
+    <h3>اختر ختماً</h3>
+    <div id="stamp-list">
+      <div class="stamp-item" data-stamp="approved">موافق عليه</div>
+      <div class="stamp-item" data-stamp="rejected">مرفوض</div>
+      <div class="stamp-item" data-stamp="draft">مسودة</div>
+      <div class="stamp-item" data-stamp="confidential">سري</div>
+      <div class="stamp-item" data-stamp="final">نهائي</div>
+      <div class="stamp-item" data-stamp="urgent">عاجل</div>
+    </div>
+    <button id="stamp-close">إغلاق</button>
+  </div>
+</div>
+
+<!-- CONTEXT MENU -->
+<div id="context-menu" style="display:none;">
+  <ul>
+    <li id="ctx-copy"><i class="fa fa-copy"></i> نسخ</li>
+    <li id="ctx-cut"><i class="fa fa-cut"></i> قص</li>
+    <li id="ctx-paste"><i class="fa fa-paste"></i> لصق</li>
+    <li class="ctx-divider"></li>
+    <li id="ctx-delete"><i class="fa fa-trash"></i> حذف</li>
+    <li id="ctx-bring-front"><i class="fa fa-layer-group"></i> إلى الأمام</li>
+    <li id="ctx-send-back"><i class="fa fa-layer-group fa-flip-vertical"></i> إلى الخلف</li>
+  </ul>
+</div>
+
+<!-- FIELDS TOAST -->
+<div id="fields-toast"></div>
+
+<!-- STATUS BAR -->
+<div id="statusbar">
+  <span id="status-tool">الأداة: تحديد</span>
+  <span id="status-coords">X: 0  Y: 0</span>
+  <span id="status-info">لا يوجد ملف مفتوح</span>
+</div>
+
+<!-- SCRIPTS -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
+<script>
+  pdfjsLib.GlobalWorkerOptions.workerSrc =
+    'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+</script>
+<script src="js/app.js"></script>
+</body>
+</html>

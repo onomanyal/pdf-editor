@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="PDF Pro" />
+  <meta name="theme-color" content="#0f1117" />
+  <title>PDF Pro Editor</title>
+
+  <!-- PWA Manifest -->
+  <link rel="manifest" href="manifest.json" />
+  <link rel="apple-touch-icon" href="icons/icon.svg" />
+
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <!-- Mobile CSS -->
+  <link rel="stylesheet" href="css/mobile.css" />
+
+  <style>
+    /* Hide ALL desktop layout elements – app.js needs them in the DOM but not visible */
+    #menubar, #toolbar, #right-panel, #statusbar,
+    #viewer-area, #viewer-controls, #canvas-wrapper,
+    #context-menu, #drop-zone, #text-overlay,
+    #stamp-modal, #spellcheck-modal, #spellcheck-backdrop,
+    #fields-toast, .modal-backdrop { display: none !important; }
+
+    /* But page-container and its canvases must remain visible inside #m-viewer */
+    #page-container { display: block !important; }
+  </style>
+</head>
+<body>
+
+<!-- ════════════════════════════════════════════════════════════
+     HIDDEN DESKTOP DOM — required by app.js (same IDs)
+     These elements are invisible; the mobile UI uses its own elements.
+     ════════════════════════════════════════════════════════════ -->
+<div id="layout" style="display:none;position:absolute;pointer-events:none;visibility:hidden">
+
+  <!-- menus / status required by app.js -->
+  <div id="menubar">
+    <button id="btn-open"></button>
+    <button id="btn-save"></button>
+    <button id="btn-export"></button>
+    <input type="file" id="file-input"  accept="application/pdf" />
+    <input type="file" id="image-input" accept="image/*" />
+  </div>
+  <div id="statusbar">
+    <span id="status-tool"></span>
+    <span id="status-coords"></span>
+    <span id="status-info">لا يوجد ملف مفتوح</span>
+  </div>
+
+  <!-- LEFT TOOLBAR -->
+  <aside id="toolbar">
+    <div class="tool-group-label" style="display:none"></div>
+    <button class="tool-btn" id="tool-select"    data-tool="select"></button>
+    <button class="tool-btn" id="tool-hand"      data-tool="hand"></button>
+    <button class="tool-btn" id="tool-text"      data-tool="text"></button>
+    <button class="tool-btn" id="tool-highlight" data-tool="highlight"></button>
+    <button class="tool-btn" id="tool-underline" data-tool="underline"></button>
+    <button class="tool-btn" id="tool-strikeout" data-tool="strikeout"></button>
+    <button class="tool-btn" id="tool-pen"       data-tool="pen"></button>
+    <button class="tool-btn" id="tool-eraser"    data-tool="eraser"></button>
+    <button class="tool-btn" id="tool-rect"      data-tool="rect"></button>
+    <button class="tool-btn" id="tool-circle"    data-tool="circle"></button>
+    <button class="tool-btn" id="tool-arrow"     data-tool="arrow"></button>
+    <button class="tool-btn" id="tool-line"      data-tool="line"></button>
+    <button class="tool-btn" id="tool-image"     data-tool="image"></button>
+    <button class="tool-btn" id="tool-stamp"     data-tool="stamp"></button>
+    <button class="tool-btn" id="btn-undo"></button>
+    <button class="tool-btn" id="btn-redo"></button>
+    <button class="tool-btn" id="btn-delete"></button>
+    <button class="tool-btn" id="btn-spellcheck"></button>
+    <button class="tool-btn" id="btn-detect-fields"></button>
+    <button class="tool-btn" id="btn-clear-fields"></button>
+  </aside>
+
+  <!-- RIGHT PANEL (props + thumbnails) -->
+  <aside id="right-panel">
+    <div id="panel-props" class="panel-content active">
+      <div class="prop-section">
+        <select id="prop-font-family"><option>Arial</option><option>Times New Roman</option><option>Courier New</option><option>Verdana</option><option>Georgia</option></select>
+        <input type="number" id="prop-font-size" value="16" min="6" max="200" />
+        <input type="color"  id="prop-font-color" value="#000000" />
+        <button id="prop-bold"></button>
+        <button id="prop-italic"></button>
+        <button id="prop-underline-btn"></button>
+        <input type="color"    id="prop-text-bg-color" value="#ffffff" />
+        <input type="checkbox" id="prop-text-bg-none" />
+        <input type="color"  id="prop-stroke-color" value="#e53e3e" />
+        <input type="range"  id="prop-stroke-width" min="1" max="30" value="2" />
+        <span  id="stroke-width-label">2</span>
+        <input type="color"    id="prop-fill-color" value="#ffffff" />
+        <input type="checkbox" id="prop-fill-none" checked />
+        <input type="range"    id="prop-opacity" min="10" max="100" value="100" />
+        <span  id="opacity-label">100%</span>
+        <input type="color" id="prop-highlight-color" value="#ffff00" />
+        <input type="range" id="prop-highlight-opacity" min="10" max="100" value="50" />
+        <span  id="highlight-op-label">50%</span>
+      </div>
+    </div>
+    <div id="panel-thumbs" class="panel-content">
+      <ul id="thumbnails-list"></ul>
+    </div>
+  </aside>
+
+  <!-- VIEWER AREA (controls + canvas) -->
+  <main id="viewer-area">
+    <div id="viewer-controls">
+      <button id="btn-zoom-out"></button>
+      <span   id="zoom-label">100%</span>
+      <button id="btn-zoom-in"></button>
+      <button id="btn-zoom-fit"></button>
+      <button id="btn-prev-page"></button>
+      <input  id="page-input" type="number" min="1" value="1" />
+      <span   id="page-total">/ 0</span>
+      <button id="btn-next-page"></button>
+      <button id="btn-rotate-left"></button>
+      <button id="btn-rotate-right"></button>
+      <button id="btn-fullscreen"></button>
+    </div>
+    <div id="canvas-wrapper">
+      <div id="drop-zone"><button id="btn-browse"></button></div>
+      <!-- page-container moved into #m-viewer by JS -->
+      <div id="page-container">
+        <canvas id="pdf-canvas"></canvas>
+      </div>
+    </div>
+  </main>
+</div><!-- /layout -->
+
+<!-- Hidden text overlay for app.js to detect -->
+<div id="text-overlay" style="display:none">
+  <div id="text-editor" contenteditable="true" spellcheck="false"></div>
+  <button id="text-confirm"></button>
+  <button id="text-cancel"></button>
+  <!-- spell inline elements -->
+  <select id="spell-lang">
+    <option value="auto">تلقائي</option><option value="ar">عربي</option>
+    <option value="en-US">English</option><option value="fr">Français</option>
+  </select>
+  <button id="btn-check-inline"></button>
+  <div id="spell-errors-panel" style="display:none">
+    <span id="spell-error-count"></span>
+    <button id="spell-panel-close"></button>
+    <div id="spell-errors-list"></div>
+  </div>
+  <div id="spell-checking-indicator" style="display:none"></div>
+</div>
+
+<!-- Stamp modal (hidden, app.js manages it) -->
+<div id="stamp-modal" style="display:none">
+  <div class="modal-backdrop"></div>
+  <div class="modal-box">
+    <button id="stamp-close"></button>
+    <div class="stamp-grid">
+      <div class="stamp-item" data-stamp="approved">معتمد</div>
+      <div class="stamp-item" data-stamp="rejected">مرفوض</div>
+      <div class="stamp-item" data-stamp="pending">قيد المراجعة</div>
+      <div class="stamp-item" data-stamp="draft">مسودة</div>
+      <div class="stamp-item" data-stamp="original">أصل</div>
+      <div class="stamp-item" data-stamp="copy">نسخة</div>
+      <div class="stamp-item" data-stamp="secret">سري</div>
+      <div class="stamp-item" data-stamp="urgent">عاجل</div>
+      <div class="stamp-item" data-stamp="paid">مدفوع</div>
+    </div>
+  </div>
+</div>
+
+<!-- SpellCheck modal (hidden, app.js manages it) -->
+<div class="modal-backdrop" id="spellcheck-backdrop" style="display:none"></div>
+<div id="spellcheck-modal" style="display:none">
+  <div class="spellcheck-box">
+    <div class="spellcheck-header">
+      <span>تدقيق لغوي</span>
+      <button id="spellcheck-close"></button>
+    </div>
+    <div class="spellcheck-body">
+      <div class="spell-modal-lang-row">
+        <label>اللغة:</label>
+        <select id="spell-modal-lang">
+          <option value="auto">تلقائي</option><option value="ar">عربي</option>
+          <option value="en-US">English</option><option value="fr">Français</option>
+        </select>
+        <button id="btn-run-spellcheck" class="menu-btn accent">فحص الصفحة</button>
+      </div>
+      <div id="spell-modal-status" class="spell-modal-status"></div>
+      <div id="spell-modal-results"></div>
+    </div>
+    <div class="spell-modal-footer">
+      <span id="spell-modal-summary"></span>
+      <span id="spell-error-count-modal"></span>
+    </div>
+  </div>
+</div>
+
+<!-- Context menu (desktop, hidden) -->
+<div id="context-menu" style="display:none">
+  <ul>
+    <li id="ctx-copy"><i class="fa fa-copy"></i> نسخ</li>
+    <li id="ctx-cut"><i class="fa fa-cut"></i> قص</li>
+    <li id="ctx-paste"><i class="fa fa-paste"></i> لصق</li>
+    <li class="ctx-divider"></li>
+    <li id="ctx-delete"><i class="fa fa-trash"></i> حذف</li>
+    <li id="ctx-bring-front"><i class="fa fa-layer-group"></i> إلى الأمام</li>
+    <li id="ctx-send-back"><i class="fa fa-layer-group"></i> إلى الخلف</li>
+  </ul>
+</div>
+
+<!-- Fields toast (hidden, forwarded to mobile toast) -->
+<div id="fields-toast"></div>
+
+<!-- ════════════════════════════════════════════════════════════
+     MOBILE UI
+     ════════════════════════════════════════════════════════════ -->
+
+<!-- TOP BAR -->
+<header id="m-topbar">
+  <div class="m-brand">
+    <i class="fa fa-file-pdf" style="color:var(--accent);font-size:1.3rem"></i>
+    PDF Pro
+  </div>
+  <div class="m-topbar-actions">
+    <button class="m-btn" id="m-btn-undo"   title="تراجع"><i class="fa fa-undo"></i></button>
+    <button class="m-btn" id="m-btn-redo"   title="إعادة"><i class="fa fa-redo"></i></button>
+    <button class="m-btn accent" id="m-btn-save"   title="حفظ"><i class="fa fa-save"></i></button>
+    <button class="m-btn" id="m-btn-export" title="تصدير PDF"><i class="fa fa-file-export"></i></button>
+    <button class="m-btn" id="m-btn-open"   title="فتح ملف"><i class="fa fa-folder-open"></i></button>
+  </div>
+</header>
+
+<!-- PAGE NAVIGATION BAR (appears after PDF load) -->
+<div id="m-page-bar">
+  <button class="ctrl-btn" id="m-zoom-out"><i class="fa fa-search-minus"></i></button>
+  <button class="ctrl-btn" id="m-zoom-fit"><i class="fa fa-expand"></i></button>
+  <button class="ctrl-btn" id="m-zoom-in"><i class="fa fa-search-plus"></i></button>
+  <span style="color:var(--border)">|</span>
+  <button class="ctrl-btn" id="m-prev-page"><i class="fa fa-chevron-left"></i></button>
+  <span id="m-page-info">صفحة 1 / 0</span>
+  <button class="ctrl-btn" id="m-next-page"><i class="fa fa-chevron-right"></i></button>
+  <span id="m-zoom-info">100%</span>
+</div>
+
+<!-- MAIN CANVAS AREA -->
+<div id="m-viewer">
+
+  <!-- Drop zone (before PDF load) -->
+  <div id="m-drop-zone">
+    <i class="fa fa-file-pdf drop-icon"></i>
+    <p>افتح ملف PDF للبدء<br><small style="color:var(--text-muted)">يدعم الملفات الممسوحة ضوئياً</small></p>
+    <button id="m-open-btn-big"><i class="fa fa-folder-open"></i> اختر ملف PDF</button>
+    <p style="font-size:.75rem;color:var(--text-muted);margin-top:8px">أو شارك الملف من تطبيق آخر</p>
+  </div>
+
+  <!-- PDF canvas is moved here by JS from #page-container -->
+
+</div>
+
+<!-- BOTTOM NAV BAR -->
+<nav id="m-bottombar">
+  <button class="m-nav-btn" id="nav-open" title="فتح ملف">
+    <i class="fa fa-folder-open"></i><span>فتح</span>
+  </button>
+  <button class="m-nav-btn" id="nav-tools" title="الأدوات">
+    <i class="fa fa-pen-nib"></i><span>أدوات</span>
+  </button>
+  <button class="m-nav-btn" id="nav-props" title="الخصائص">
+    <i class="fa fa-sliders-h"></i><span>خصائص</span>
+  </button>
+  <button class="m-nav-btn" id="nav-pages" title="الصفحات">
+    <i class="fa fa-th-large"></i><span>صفحات</span>
+  </button>
+  <button class="m-nav-btn" id="nav-more" title="المزيد">
+    <i class="fa fa-ellipsis-h"></i><span>المزيد</span>
+  </button>
+</nav>
+
+<!-- STATUS BAR -->
+<div id="m-statusbar">
+  <span id="m-status-tool">تحديد</span>
+  <span id="m-status-info">افتح ملف للبدء</span>
+</div>
+
+<!-- ═══ DRAWERS ═══════════════════════════════════════════════ -->
+
+<!-- OVERLAY: Tools -->
+<div class="m-drawer-overlay" id="m-overlay-tools"></div>
+<div class="m-drawer" id="m-drawer-tools">
+  <div class="m-drawer-handle"></div>
+  <div class="m-drawer-title">الأدوات</div>
+  <div class="m-drawer-scroll">
+    <div class="m-tools-grid">
+
+      <div class="m-tool-section-label">عرض</div>
+      <div class="m-tool-item active" data-tool="select"><i class="fa fa-mouse-pointer"></i>تحديد</div>
+      <div class="m-tool-item"        data-tool="hand"><i class="fa fa-hand-paper"></i>تمرير</div>
+      <div class="m-tool-item"        id="m-btn-delete-tool"><i class="fa fa-trash"></i>حذف</div>
+
+      <div class="m-tool-section-label">نصوص</div>
+      <div class="m-tool-item" data-tool="text"><i class="fa fa-font"></i>نص</div>
+      <div class="m-tool-item" data-tool="highlight"><i class="fa fa-highlighter"></i>تظليل</div>
+      <div class="m-tool-item" data-tool="underline"><i class="fa fa-underline"></i>تسطير</div>
+      <div class="m-tool-item" data-tool="strikeout"><i class="fa fa-strikethrough"></i>شطب</div>
+
+      <div class="m-tool-section-label">رسم</div>
+      <div class="m-tool-item" data-tool="pen"><i class="fa fa-pen-nib"></i>قلم</div>
+      <div class="m-tool-item" data-tool="eraser"><i class="fa fa-eraser"></i>ممحاة</div>
+
+      <div class="m-tool-section-label">أشكال</div>
+      <div class="m-tool-item" data-tool="rect"><i class="fa fa-square"></i>مستطيل</div>
+      <div class="m-tool-item" data-tool="circle"><i class="fa fa-circle"></i>دائرة</div>
+      <div class="m-tool-item" data-tool="arrow"><i class="fa fa-long-arrow-alt-right"></i>سهم</div>
+      <div class="m-tool-item" data-tool="line"><i class="fa fa-minus"></i>خط</div>
+
+      <div class="m-tool-section-label">إدراج</div>
+      <div class="m-tool-item" id="m-tool-image"><i class="fa fa-image"></i>صورة</div>
+
+      <!-- Stamp items directly -->
+      <div class="m-tool-section-label">ختم</div>
+      <div class="m-stamp-item stamp-approved" data-stamp="approved">✅ معتمد</div>
+      <div class="m-stamp-item stamp-rejected"  data-stamp="rejected">❌ مرفوض</div>
+      <div class="m-stamp-item stamp-pending"   data-stamp="pending">⏳ قيد المراجعة</div>
+      <div class="m-stamp-item stamp-draft"     data-stamp="draft">📝 مسودة</div>
+      <div class="m-stamp-item stamp-secret"    data-stamp="secret">🔒 سري</div>
+      <div class="m-stamp-item stamp-urgent"    data-stamp="urgent">🚨 عاجل</div>
+
+    </div>
+  </div>
+</div>
+
+<!-- OVERLAY: Properties -->
+<div class="m-drawer-overlay" id="m-overlay-props"></div>
+<div class="m-drawer" id="m-drawer-props">
+  <div class="m-drawer-handle"></div>
+  <div class="m-drawer-title">الخصائص</div>
+  <div class="m-drawer-scroll">
+
+    <div class="m-prop-section">
+      <div class="m-prop-label">الخط</div>
+      <div class="m-prop-row">
+        <label>النوع</label>
+        <select id="m-prop-font-family">
+          <option>Arial</option><option>Times New Roman</option>
+          <option>Courier New</option><option>Verdana</option><option>Georgia</option>
+        </select>
+      </div>
+      <div class="m-prop-row">
+        <label>الحجم</label>
+        <input type="number" id="m-prop-font-size" value="16" min="6" max="200" />
+      </div>
+      <div class="m-prop-row">
+        <label>لون النص</label>
+        <input type="color" id="m-prop-font-color" value="#000000" />
+      </div>
+      <div class="m-prop-row">
+        <label>النمط</label>
+        <div class="m-style-btns">
+          <button class="m-style-btn" id="m-prop-bold"><i class="fa fa-bold"></i></button>
+          <button class="m-style-btn" id="m-prop-italic"><i class="fa fa-italic"></i></button>
+          <button class="m-style-btn" id="m-prop-underline"><i class="fa fa-underline"></i></button>
+        </div>
+      </div>
+    </div>
+
+    <div class="m-prop-section">
+      <div class="m-prop-label">الرسم</div>
+      <div class="m-prop-row">
+        <label>اللون</label>
+        <input type="color" id="m-prop-stroke-color" value="#e53e3e" />
+      </div>
+      <div class="m-prop-row">
+        <label>السُّمك</label>
+        <input type="range"  id="m-prop-stroke-width" min="1" max="30" value="2" />
+      </div>
+      <div class="m-prop-row">
+        <label>التعبئة</label>
+        <input type="color" id="m-prop-fill-color" value="#ffffff" />
+      </div>
+    </div>
+
+    <div class="m-prop-section">
+      <div class="m-prop-label">الشفافية</div>
+      <div class="m-prop-row">
+        <input type="range" id="m-prop-opacity" min="10" max="100" value="100" style="flex:1" />
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- OVERLAY: Pages (thumbnails) -->
+<div class="m-drawer-overlay" id="m-overlay-pages"></div>
+<div class="m-drawer" id="m-drawer-pages">
+  <div class="m-drawer-handle"></div>
+  <div class="m-drawer-title">الصفحات</div>
+  <div class="m-drawer-scroll" id="m-thumbs-container">
+    <!-- thumbnails-list moved here by JS -->
+  </div>
+</div>
+
+<!-- OVERLAY: More options -->
+<div class="m-drawer-overlay" id="m-overlay-more"></div>
+<div class="m-drawer" id="m-drawer-more">
+  <div class="m-drawer-handle"></div>
+  <div class="m-drawer-title">المزيد</div>
+  <div class="m-drawer-scroll">
+    <div class="m-tools-grid">
+      <div class="m-tool-item" id="m-more-rotate-l"><i class="fa fa-rotate-left"></i>تدوير يسار</div>
+      <div class="m-tool-item" id="m-more-rotate-r"><i class="fa fa-rotate-right"></i>تدوير يمين</div>
+      <div class="m-tool-item" id="m-more-fullscreen"><i class="fa fa-expand-arrows-alt"></i>ملء الشاشة</div>
+      <div class="m-tool-item" id="m-more-detect"><i class="fa fa-table-cells"></i>كشف حقول</div>
+      <div class="m-tool-item" id="m-more-clear"><i class="fa fa-broom"></i>مسح الحقول</div>
+      <div class="m-tool-item" id="m-more-spell"><i class="fa fa-spell-check"></i>تدقيق لغوي</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ TEXT INPUT OVERLAY ════════════════════════════════════ -->
+<div id="m-text-overlay">
+  <div id="m-text-box">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+      <select id="m-spell-lang-inline" style="flex:1;height:36px;background:var(--bg-elevated);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:0 8px;font-size:.82rem">
+        <option value="auto">تلقائي</option>
+        <option value="ar">عربي</option>
+        <option value="en-US">English</option>
+      </select>
+      <span style="font-size:.8rem;color:var(--text-muted)">أدخل النص</span>
+    </div>
+    <div id="m-text-editor" contenteditable="true" dir="auto" inputmode="text"></div>
+    <div class="m-text-actions">
+      <button class="m-text-cancel" id="m-text-cancel"><i class="fa fa-times"></i> إلغاء</button>
+      <button class="m-text-confirm" id="m-text-confirm"><i class="fa fa-check"></i> إضافة</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ CONTEXT MENU (mobile) ════════════════════════════════ -->
+<div id="m-context-menu">
+  <ul>
+    <li id="m-ctx-copy"><i class="fa fa-copy"></i> نسخ</li>
+    <li id="m-ctx-cut"><i class="fa fa-cut"></i> قص</li>
+    <li id="m-ctx-paste"><i class="fa fa-paste"></i> لصق</li>
+    <li class="ctx-divider"></li>
+    <li id="m-ctx-front"><i class="fa fa-layer-group"></i> إلى الأمام</li>
+    <li id="m-ctx-back"><i class="fa fa-layer-group"></i> إلى الخلف</li>
+    <li class="ctx-divider"></li>
+    <li id="m-ctx-delete" style="color:#f87171"><i class="fa fa-trash"></i> حذف</li>
+  </ul>
+</div>
+
+<!-- ═══ TOAST & LOADING ═══════════════════════════════════════ -->
+<div id="m-toast"></div>
+<div id="m-zoom-badge"></div>
+
+<div id="m-loading">
+  <div class="m-spinner"></div>
+  <p>جاري تحميل الملف…</p>
+</div>
+
+<!-- ═══ PWA INSTALL BANNER ════════════════════════════════════ -->
+<div id="m-install-banner">
+  <div class="m-install-row">
+    <div class="m-install-icon">📱</div>
+    <div class="m-install-text">
+      <strong>تثبيت PDF Pro</strong>
+      <small>أضف التطبيق إلى شاشتك الرئيسية للوصول السريع</small>
+    </div>
+  </div>
+  <div class="m-install-actions">
+    <button class="m-install-no"  id="m-install-no">لاحقاً</button>
+    <button class="m-install-yes" id="m-install-yes"><i class="fa fa-download"></i> تثبيت</button>
+  </div>
+</div>
+
+<!-- ═══ PINCH HINT ════════════════════════════════════════════ -->
+<div id="m-pinch-hint" style="display:none">
+  <i class="fa fa-expand-arrows-alt"></i>
+  <span>قرّص للتكبير</span>
+</div>
+
+<!-- ═══ SCRIPTS ═══════════════════════════════════════════════ -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
+<script>
+  pdfjsLib.GlobalWorkerOptions.workerSrc =
+    'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+</script>
+<!-- Main app logic (shared with desktop) -->
+<script src="../js/app.js"></script>
+<!-- Mobile enhancements -->
+<script src="js/touch.js"></script>
+
+<script>
+// ── Move page-container into the mobile viewer ─────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  const pc = document.getElementById('page-container');
+  const mv = document.getElementById('m-viewer');
+  if (pc && mv) {
+    mv.appendChild(pc);
+    pc.style.pointerEvents = 'auto';
+    pc.style.visibility    = 'visible';
+    pc.style.display       = 'block';
+  }
+
+  // Pass delete button from tool grid
+  const delBtn = document.getElementById('m-btn-delete-tool');
+  if (delBtn) delBtn.addEventListener('click', () => document.getElementById('btn-delete').click());
+
+  // Show one-time pinch hint
+  if (!localStorage.getItem('pdfpro-pinch-hint-shown')) {
+    const h = document.getElementById('m-pinch-hint');
+    if (h) {
+      h.style.display = 'flex';
+      setTimeout(() => {
+        h.classList.add('show');
+        setTimeout(() => { h.classList.remove('show'); setTimeout(() => h.style.display='none', 400); }, 2800);
+        localStorage.setItem('pdfpro-pinch-hint-shown', '1');
+      }, 2000);
+    }
+  }
+
+  // Handle Share Target / Web Share API if PDF opened from another app
+  if (navigator.share && window.location.search.includes('share')) {
+    document.getElementById('file-input').click();
+  }
+});
+</script>
+
+</body>
+</html>
