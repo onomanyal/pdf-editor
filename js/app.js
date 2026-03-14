@@ -111,8 +111,10 @@ function initFabric(width, height) {
     // Make BOTH inner canvases fully transparent so PDF shows through
     fabricCanvas.lowerCanvasEl.style.background      = 'transparent';
     fabricCanvas.lowerCanvasEl.style.backgroundColor = 'transparent';
+    fabricCanvas.lowerCanvasEl.style.overflow        = 'visible';
     fabricCanvas.upperCanvasEl.style.background      = 'transparent';
     fabricCanvas.upperCanvasEl.style.backgroundColor = 'transparent';
+    fabricCanvas.upperCanvasEl.style.overflow        = 'visible';
 
     // Position the Fabric wrapper exactly over #pdf-canvas
     const wrapper = fabricCanvas.wrapperEl;
@@ -121,6 +123,7 @@ function initFabric(width, height) {
     wrapper.style.left     = '0';
     wrapper.style.width    = width  + 'px';
     wrapper.style.height   = height + 'px';
+    wrapper.style.overflow = 'visible'; // prevent Fabric clipping objects near edges
 
     // ── Events ────────────────────────────────────────────
     fabricCanvas.on('object:added',    () => saveHistory(State.currentPage));
@@ -929,7 +932,12 @@ imageInput.addEventListener('change', (e) => {
         const maxW  = fabricCanvas.width  * 0.4;
         const maxH  = fabricCanvas.height * 0.4;
         const scale = Math.min(maxW / htmlImg.naturalWidth, maxH / htmlImg.naturalHeight, 1);
-        img.set({ left: 60, top: 60, scaleX: scale, scaleY: scale });
+        // Center the image on the canvas
+        const scaledW = htmlImg.naturalWidth  * scale;
+        const scaledH = htmlImg.naturalHeight * scale;
+        const centerX = (fabricCanvas.width  - scaledW) / 2;
+        const centerY = (fabricCanvas.height - scaledH) / 2;
+        img.set({ left: centerX, top: centerY, scaleX: scale, scaleY: scale });
         fabricCanvas.add(img);
         fabricCanvas.setActiveObject(img);
         fabricCanvas.requestRenderAll();
