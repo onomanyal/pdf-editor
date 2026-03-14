@@ -1231,53 +1231,46 @@ async function exportToPdf() {
   if (!State.pdfLibDoc) { alert('افتح ملف PDF أولاً'); return; }
 
   try {
-    // Save current page annotations before exporting
     savePageAnnotations(State.currentPage);
 
-    const pages      = State.pdfLibDoc.getPages();
-    const tmpCanvas  = document.createElement('canvas');
-    tmpCanvas.style.display = 'none';
-    document.body.appendChild(tmpCanvas);
+    const pages = State.pdfLibDoc.getPages();
 
     for (let i = 1; i <= State.totalPages; i++) {
       const annotations = State.pageAnnotations[i];
       if (!annotations || !annotations.objects || annotations.objects.length === 0) continue;
 
-      // Get native PDF page dimensions (scale = 1)
       const pdfPage    = await State.pdfDoc.getPage(i);
       const nativePort = pdfPage.getViewport({ scale: 1.0 });
       const nW = nativePort.width;
       const nH = nativePort.height;
 
-      // Render at 3× for crisp text / sharp lines in the exported PDF
       const EXPORT_DPI = 3;
       const ratio = 1.0 / State.scale;
 
       const scaledObjects = (annotations.objects || [])
-        .filter(obj => !obj.isFormField)      // exclude form-field guide overlays
+        .filter(obj => !obj.isFormField)
         .map(obj => {
           const o = Object.assign({}, obj);
-          // Scale numeric geometry props from rendered coords → native coords
           ['left','top','width','height','radius','rx','ry',
            'x1','y1','x2','y2','strokeWidth','fontSize'].forEach(k => {
             if (typeof o[k] === 'number') o[k] = o[k] * ratio;
           });
-          // Scale freehand path coordinates
           if (Array.isArray(o.path)) {
             o.path = o.path.map(seg => seg.map((v, idx) => (idx === 0 ? v : v * ratio)));
           }
-          if (o.scaleX) o.scaleX = o.scaleX;
-          if (o.scaleY) o.scaleY = o.scaleY;
           return o;
         });
 
-      // Skip this page if all objects were form-field guides
       if (!scaledObjects.length) continue;
 
       const scaledData = Object.assign({}, annotations, { objects: scaledObjects });
 
+      // Create a fresh canvas element every iteration — never reuse after dispose()
+      const tmpCanvas = document.createElement('canvas');
       tmpCanvas.width  = nW;
       tmpCanvas.height = nH;
+      tmpCanvas.style.display = 'none';
+      document.body.appendChild(tmpCanvas);
 
       const tmpFc = new fabric.Canvas(tmpCanvas, {
         backgroundColor: null, width: nW, height: nH,
@@ -1287,17 +1280,10 @@ async function exportToPdf() {
         tmpFc.loadFromJSON(scaledData, () => { tmpFc.renderAll(); resolve(); });
       });
 
-      // multiplier:3 → Fabric renders internally at 3× → crisp PNG embedded at native PDF size
       const annotDataUrl = tmpFc.toDataURL({ format: 'png', multiplier: EXPORT_DPI });
-      tmpFc.dispose();
 
-      // Re-create element for next iteration
-      if (i < State.totalPages) {
-        const fresh = document.createElement('canvas');
-        fresh.style.display = 'none';
-        tmpCanvas.parentNode.insertBefore(fresh, tmpCanvas);
-        tmpCanvas.parentNode.removeChild(tmpCanvas);
-      }
+      // dispose() removes the canvas from DOM — that's fine, we created a fresh one each time
+      tmpFc.dispose();
 
       const imgBytes = dataUrlToBytes(annotDataUrl);
       const pngImage = await State.pdfLibDoc.embedPng(imgBytes);
@@ -1305,9 +1291,6 @@ async function exportToPdf() {
       const { width, height } = libPage.getSize();
       libPage.drawImage(pngImage, { x: 0, y: 0, width, height });
     }
-
-    // Clean up
-    if (tmpCanvas.parentNode) tmpCanvas.parentNode.removeChild(tmpCanvas);
 
     const pdfBytes = await State.pdfLibDoc.save();
     const blob     = new Blob([pdfBytes], { type: 'application/pdf' });
