@@ -894,24 +894,20 @@ imageInput.addEventListener('change', (e) => {
   const reader = new FileReader();
   reader.onload = (ev) => {
     const dataUrl = ev.target.result;
-    // Create an HTMLImageElement first to ensure the image is decoded
-    const htmlImg = new Image();
-    htmlImg.onload = () => {
-      const fabricImg = new fabric.Image(htmlImg, {
-        left: 60,
-        top: 60,
-        crossOrigin: null,
-      });
+    fabric.Image.fromURL(dataUrl, (img) => {
+      if (!img || img.width === 0) {
+        alert('تعذّر تحميل الصورة');
+        return;
+      }
       const maxW = fabricCanvas.width  * 0.6;
       const maxH = fabricCanvas.height * 0.6;
-      const scale = Math.min(maxW / htmlImg.width, maxH / htmlImg.height, 1);
-      fabricImg.scale(scale);
-      fabricCanvas.add(fabricImg);
-      fabricCanvas.setActiveObject(fabricImg);
+      const scale = Math.min(maxW / img.width, maxH / img.height, 1);
+      img.set({ left: 60, top: 60, scaleX: scale, scaleY: scale });
+      fabricCanvas.add(img);
+      fabricCanvas.setActiveObject(img);
       fabricCanvas.requestRenderAll();
       setTool('select');
-    };
-    htmlImg.src = dataUrl;
+    }, { crossOrigin: null });
   };
   reader.readAsDataURL(file);
   imageInput.value = '';
