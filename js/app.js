@@ -891,26 +891,29 @@ async function runModalSpellCheck() {
 imageInput.addEventListener('change', (e) => {
   const file = e.target.files[0];
   if (!file || !fabricCanvas) return;
-  const reader = new FileReader();
-  reader.onload = (ev) => {
-    const dataUrl = ev.target.result;
-    const htmlImg = new Image();
-    htmlImg.onload = () => {
-      // Fabric.js 5: pass the already-loaded HTMLImageElement directly
-      const img = new fabric.Image(htmlImg);
-      const maxW = fabricCanvas.width  * 0.6;
-      const maxH = fabricCanvas.height * 0.6;
-      const scale = Math.min(maxW / htmlImg.naturalWidth, maxH / htmlImg.naturalHeight, 1);
-      img.set({ left: 60, top: 60, scaleX: scale, scaleY: scale });
-      fabricCanvas.add(img);
-      fabricCanvas.setActiveObject(img);
-      fabricCanvas.requestRenderAll();
-      setTool('select');
-    };
-    htmlImg.onerror = () => alert('تعذّر قراءة الصورة');
-    htmlImg.src = dataUrl;
+
+  const objectUrl = URL.createObjectURL(file);
+  const htmlImg   = new Image();
+
+  htmlImg.onload = () => {
+    const img  = new fabric.Image(htmlImg);
+    const maxW = fabricCanvas.width  * 0.6;
+    const maxH = fabricCanvas.height * 0.6;
+    const scale = Math.min(maxW / htmlImg.naturalWidth, maxH / htmlImg.naturalHeight, 1);
+    img.set({ left: 60, top: 60, scaleX: scale, scaleY: scale });
+    fabricCanvas.add(img);
+    fabricCanvas.setActiveObject(img);
+    fabricCanvas.requestRenderAll();
+    URL.revokeObjectURL(objectUrl);
+    setTool('select');
   };
-  reader.readAsDataURL(file);
+
+  htmlImg.onerror = () => {
+    URL.revokeObjectURL(objectUrl);
+    alert('صيغة الصورة غير مدعومة، يرجى استخدام JPG أو PNG');
+  };
+
+  htmlImg.src = objectUrl;
   imageInput.value = '';
 });
 
